@@ -1,0 +1,12 @@
+monitor:
+  - feed:
+      name: 'Aliens are real'
+      url: https://www.nasa.gov/rss/dyn/breaking_news.rss
+      interval: 60
+      filters:
+        - include:
+            element: title
+            matches: '/alien[s]?.*[life|real]/i'
+        - exclude:
+            element: published
+            matches: '/Apr, 1/'
