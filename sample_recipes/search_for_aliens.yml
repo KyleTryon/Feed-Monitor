@@ -6,7 +6,7 @@ monitor:
       filters:
         - include:
             element: title
-            matches: '/alien[s]?.*[life|real]/i'
+            matches: 'alien[s]?.*[life|real]'
         - exclude:
             element: published
-            matches: '/Apr, 1/'
+            matches: 'Apr, 1'

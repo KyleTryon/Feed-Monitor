@@ -3,11 +3,11 @@ package main
 import (
 	"flag"
 	"fmt"
-	"io/ioutil"
-	"sync"
-	"time"
 	"github.com/mmcdole/gofeed"
 	"gopkg.in/yaml.v3"
+	"io/ioutil"
+	"time"
+	"regexp"
 )
 
 type FeedFilter struct {
@@ -37,6 +37,10 @@ type MonitorSchema struct {
 	} `yaml:"monitor"`
 }
 
+type Notification struct {
+	Send func(*gofeed.Item)
+}
+
 var ActiveFeeds []FeedActive
 var fp = gofeed.NewParser()
 
@@ -54,17 +58,14 @@ func main() {
 
 func runService() {
 	fmt.Println("Starting service")
-	var wg sync.WaitGroup
-	wg.Add(len(ActiveFeeds))
-	for _, feed := range ActiveFeeds {
-		go func(feed FeedActive) {
-			defer wg.Done()
-			fmt.Println("Checking feed: ", feed.Name)
-			time.Sleep(time.Duration(feed.Interval) * time.Second)
-			checkFeed(&feed)
-		}(feed)
+	for true {
+		for i, feed := range ActiveFeeds {
+			if time.Now().Unix()-feed.lastPulled > int64(feed.Interval) {
+				fmt.Println("Last updated: ", time.Unix(feed.lastPulled, 0))
+				checkFeed(feed, i)
+			}
+		}
 	}
-	wg.Wait()
 }
 
 func parseConfig(fileName string) {
@@ -84,11 +85,12 @@ func parseConfig(fileName string) {
 	}
 }
 
-func checkFeed(feedItem *FeedActive) {
+func checkFeed(feedItem FeedActive, FeedIndex int) {
 	// Fetches the feed and grabs only the new items, stored in newItems[].
 	feed, err := fp.ParseURL(feedItem.Url)
-	fmt.Println("Last checked item: ", feedItem.lastItemGUID)
+	fmt.Println("Checking feed: ", feedItem.Name)
 	var newItems []*gofeed.Item
+	var matchedItems []*gofeed.Item
 	if err != nil {
 		fmt.Println("Error parsing feed: ", err)
 		return
@@ -96,25 +98,70 @@ func checkFeed(feedItem *FeedActive) {
 	for _, item := range feed.Items {
 		// fmt.Println("Checking item: ", item.Title)
 		if item.GUID == feedItem.lastItemGUID {
-			fmt.Println("End of new items")
 			break
 		}
 		newItems = append(newItems, item)
 	}
 	if len(newItems) != 0 {
-		feedItem.lastItemGUID = newItems[0].GUID
+		ActiveFeeds[FeedIndex].lastItemGUID = newItems[0].GUID
 	}
-	fmt.Println("Done checking feed: ", feedItem.Name)
+	for _, item := range newItems {
+		isMatchItem := true
+		for _, filter := range feedItem.Filters {
+			if filter.Include.Element != "" {
+				if !checkFilter(item, filter.Include, true) {
+					isMatchItem = false
+					continue
+				}
+			}
+			if filter.Exclude.Element != "" {
+				if checkFilter(item, filter.Exclude, false) {
+					isMatchItem = false
+					continue
+				}
+			}
+		}
+		if isMatchItem {
+			matchedItems = append(matchedItems, item)
+		}
+	}
+	if len(matchedItems) != 0 {
+		fmt.Println("New items found: ", len(matchedItems))
+		for _, item := range matchedItems {
+			// Send Alert
+			println("\n==============================")
+			println("Title: ", item.Title)
+			println("Description: ", item.Description)
+			println("Link: ", item.Link)
+			println("==============================")
+		}
+	}
+	ActiveFeeds[FeedIndex].lastPulled = time.Now().Unix()
 }
 
-func checkFilter(item *gofeed.Item, filter FeedFilter) bool {
+func checkFilter(item *gofeed.Item, filter FeedFilter, inclusive bool) bool {
+	var elementString string
+	re := regexp.MustCompile(filter.Matches)
 	switch filter.Element {
 	case "title":
-		return item.Title == filter.Matches
+		elementString = item.Title
 	case "link":
-		return item.Link == filter.Matches
+		elementString = item.Link
 	case "published":
-		return item.Published == filter.Matches
+		elementString = item.Published
+	case "content":
+		elementString = item.Content
+	case "author":
+		elementString = item.Authors[0].Name
+	case "Updated":
+		elementString = item.Updated
+	case "description":
+		elementString = item.Description
 	}
-	return false
+	matched := re.Match([]byte(elementString))
+	if inclusive {
+		return matched
+	} else {
+		return !matched
+	}
 }
