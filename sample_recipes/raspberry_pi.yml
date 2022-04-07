@@ -1,0 +1,9 @@
+monitor:
+  - feed:
+      name: 'Raspberry Pi Available'
+      url: https://rpilocator.com/feed.rss
+      interval: 10
+      filters:
+        - include:
+            element: title
+            matches: '.*US'

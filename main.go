@@ -8,6 +8,9 @@ import (
 	"io/ioutil"
 	"time"
 	"regexp"
+	"net/http"
+	"os"
+	"net/url"
 )
 
 type FeedFilter struct {
@@ -28,7 +31,7 @@ type Feed struct {
 type FeedActive struct {
 	Feed
 	lastPulled   int64
-	lastItemGUID string
+	lastItemTitle string
 }
 
 type MonitorSchema struct {
@@ -95,16 +98,21 @@ func checkFeed(feedItem FeedActive, FeedIndex int) {
 		fmt.Println("Error parsing feed: ", err)
 		return
 	}
+	fmt.Println("Feed length: ", len(feed.Items))
 	for _, item := range feed.Items {
-		// fmt.Println("Checking item: ", item.Title)
-		if item.GUID == feedItem.lastItemGUID {
+		fmt.Println("Checking item: ", item.Title)
+		if item.Title == ActiveFeeds[FeedIndex].lastItemTitle {
+			fmt.Println("Item already processed")
 			break
+		} else {
+			fmt.Println("Adding item to new items")
+			newItems = append(newItems, item)
 		}
-		newItems = append(newItems, item)
 	}
 	if len(newItems) != 0 {
-		ActiveFeeds[FeedIndex].lastItemGUID = newItems[0].GUID
+		ActiveFeeds[FeedIndex].lastItemTitle = newItems[0].Title
 	}
+	fmt.Println("New items: ", len(newItems))
 	for _, item := range newItems {
 		isMatchItem := true
 		for _, filter := range feedItem.Filters {
@@ -128,6 +136,15 @@ func checkFeed(feedItem FeedActive, FeedIndex int) {
 	if len(matchedItems) != 0 {
 		fmt.Println("New items found: ", len(matchedItems))
 		for _, item := range matchedItems {
+			notificationMessage := fmt.Sprintf("%s: %s", item.Title, item.Link)
+			notificationTitle := fmt.Sprintf("New item in %s", feedItem.Name)
+			postURL := fmt.Sprintf("%s/message?token=%s", os.Getenv("FEED_MONITOR_POST_URL"), os.Getenv("FEED_MONITOR_POST_TOKEN") )
+			resp, err := http.PostForm(postURL,
+			url.Values{"message": {notificationMessage}, "title": {notificationTitle}})
+			if err != nil {
+				fmt.Println("Error posting notification: ", err)
+			}
+			fmt.Println("Notification posted: ", resp.Status)
 			// Send Alert
 			println("\n==============================")
 			println("Title: ", item.Title)
