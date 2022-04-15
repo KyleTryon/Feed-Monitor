@@ -3,14 +3,14 @@ package main
 import (
 	"flag"
 	"fmt"
+	"github.com/joho/godotenv"
 	"github.com/mmcdole/gofeed"
 	"gopkg.in/yaml.v3"
 	"io/ioutil"
-	"time"
-	"regexp"
-	"net/http"
 	"os"
-	"net/url"
+	"plugin"
+	"regexp"
+	"time"
 )
 
 type FeedFilter struct {
@@ -30,7 +30,7 @@ type Feed struct {
 
 type FeedActive struct {
 	Feed
-	lastPulled   int64
+	lastPulled    int64
 	lastItemTitle string
 }
 
@@ -44,24 +44,42 @@ type Notification struct {
 	Send func(*gofeed.Item)
 }
 
+var sendNotification plugin.Symbol
 var ActiveFeeds []FeedActive
 var fp = gofeed.NewParser()
 
 func main() {
-	fileName := flag.String("config", "", "Config file")
+	fileName := flag.String("config", "", "config.yml")
+	mode := flag.String("mode", "dev", "dev or prod")
 	flag.Parse()
 	fmt.Println("Reading config file: ", *fileName)
 	if *fileName == "" {
 		fmt.Println("No config file specified")
 		return
 	}
+	if *mode != "prod" {
+		err := godotenv.Load(".env")
+		if err != nil {
+			fmt.Println("Error loading .env file")
+		}
+	}
 	parseConfig(*fileName)
+	plug, err := plugin.Open("./plugins/gotify/gotify.so")
+	if err != nil {
+		fmt.Println("Error loading plugin: ", err)
+		os.Exit(1)
+	}
+	sendNotification, err = plug.Lookup("Send")
+	if err != nil {
+		fmt.Println("Error looking up Send function in plugin: ", err)
+		os.Exit(1)
+	}
 	runService()
 }
 
 func runService() {
 	fmt.Println("Starting service")
-	for true {
+	for {
 		for i, feed := range ActiveFeeds {
 			if time.Now().Unix()-feed.lastPulled > int64(feed.Interval) {
 				fmt.Println("Last updated: ", time.Unix(feed.lastPulled, 0))
@@ -136,21 +154,17 @@ func checkFeed(feedItem FeedActive, FeedIndex int) {
 	if len(matchedItems) != 0 {
 		fmt.Println("New items found: ", len(matchedItems))
 		for _, item := range matchedItems {
-			notificationMessage := fmt.Sprintf("%s: %s", item.Title, item.Link)
-			notificationTitle := fmt.Sprintf("New item in %s", feedItem.Name)
-			postURL := fmt.Sprintf("%s/message?token=%s", os.Getenv("FEED_MONITOR_POST_URL"), os.Getenv("FEED_MONITOR_POST_TOKEN") )
-			resp, err := http.PostForm(postURL,
-			url.Values{"message": {notificationMessage}, "title": {notificationTitle}})
-			if err != nil {
-				fmt.Println("Error posting notification: ", err)
-			}
-			fmt.Println("Notification posted: ", resp.Status)
 			// Send Alert
-			println("\n==============================")
-			println("Title: ", item.Title)
-			println("Description: ", item.Description)
-			println("Link: ", item.Link)
-			println("==============================")
+			response, err := sendNotification.(func(*gofeed.Item, string) (string, error))(item, feedItem.Name)
+			if err != nil {
+				fmt.Println("Error sending notification: ", err)
+			}
+			fmt.Println("gotify:", response)
+			fmt.Println("\n==============================")
+			fmt.Println("Title: ", item.Title)
+			fmt.Println("Description: ", item.Description)
+			fmt.Println("Link: ", item.Link)
+			fmt.Println("==============================")
 		}
 	}
 	ActiveFeeds[FeedIndex].lastPulled = time.Now().Unix()

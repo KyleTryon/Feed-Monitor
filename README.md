@@ -1,4 +1,6 @@
-# Feed-Monitor
+# Feed Monitor
+
+![logo](.github/img/feed-monitor-logo.svg)
 
 _**Note:** This repo is not yet ready for use and is in very early stages of development._
 
@@ -26,11 +28,12 @@ monitor:
 ```
 
 ```shell
-$ go run main.go -config=config.yml
+go run main.go -config=config.yml
 ```
+
 ## Required Environment Variables
 
 Soon I will implement the go plugin system, but for now, this project will be designed to work directly to [gotify](https://gotify.net/) so you can receive instant push notifications from multiple devices. It should be easy to host this application alongside your gotify server in Docker-Compose.
 
-`FEED_MONITOR_POST_URL` is your gotify server's post URL.
-`FEED_MONITOR_POST_TOKEN` is your gotify server's post token.
+- `GOTIFY_URL` is your gotify server's post URL.
+- `GOTIFY_TOKEN` is your gotify server's post token.

@@ -2,7 +2,7 @@ monitor:
   - feed:
       name: 'Raspberry Pi Available'
       url: https://rpilocator.com/feed.rss
-      interval: 10
+      interval: 60
       filters:
         - include:
             element: title
