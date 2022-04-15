@@ -1,6 +1,8 @@
 # Feed Monitor
 
-![logo](.github/img/feed-monitor-logo.svg)
+<p align="center">
+  <img src=".github/img/feed-monitor-logo.svg" width="100" height="100">
+</p>
 
 _**Note:** This repo is not yet ready for use and is in very early stages of development._
 
