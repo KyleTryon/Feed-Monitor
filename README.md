@@ -1,16 +1,16 @@
-# Feed Monitor
+# Feed-Monitor
 
 <p align="center">
-  <img src=".github/img/feed-monitor-logo.svg" width="100" height="100">
+  <img src=".github/img/feed-monitor-logo-color.svg" width="100" height="100">
 </p>
 
 _**Note:** This repo is not yet ready for use and is in very early stages of development._
 
-A configurable service written in Go to monitors RSS, Atom, and JSON feeds. Create a simple configuration file to define your feeds and associated filters, and begin receiving notifications when matches are found.
+A configurable service written in Go to monitors RSS, Atom, and JSON feeds. Create a simple configuration file to define your feeds and associated filters, and begin receiving notifications when matches are found. Connect your notification to many services through plugins.
 
 ## Basic Usage
 
-Begin by defining a configuration file, multiple examples can be found in the `sample_recipes` directory.
+Begin by defining a configuration file, multiple examples can be found in the [sample_recipes](./sample_recipes/) directory.
 
 Here is a sample config, which will monitor the NASA "breaking news" RSS feed and alert us to potential articles of interest involving aliens, based on the feed item title and excluding articles posted on April first.
 
@@ -27,15 +27,40 @@ monitor:
         - exclude:
             element: published
             matches: '/Apr, 1/'
+      notifiers:
+        - gotify:
+            server: https://gotify.example.com
+            token: 'your_token'
 ```
+
+All filters must return true for the item to be considered a match. The example above states the title must contain the word "alien" and "life" or "real" to be considered a match _and_ the published date must not contain "April 1".
 
 ```shell
 go run main.go -config=config.yml
 ```
 
-## Required Environment Variables
+### Run in Docker
 
-Soon I will implement the go plugin system, but for now, this project will be designed to work directly to [gotify](https://gotify.net/) so you can receive instant push notifications from multiple devices. It should be easy to host this application alongside your gotify server in Docker-Compose.
+> Coming soon.
 
-- `GOTIFY_URL` is your gotify server's post URL.
-- `GOTIFY_TOKEN` is your gotify server's post token.
+### Run in Docker-Compose
+
+> Coming soon.
+
+## Plugins
+
+Feed Monitor supports plugins to push notifications to other services.
+
+### Official Plugins
+
+| Plugin | Description |
+| --- | --- |
+| [gotify](./plugins/gotify/) | Send notifications to a [gotify](https://gotify.io) server to receive real-time push notifications when a match is found. |
+
+### Community Plugins
+
+Write a plugin for Feed-Monitor! Get started by reading the  [HACKING.md](./HACKING.md) page.
+
+| Plugin | Description |
+| --- | --- |
+| - awaiting - | - |

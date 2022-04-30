@@ -1,0 +1,16 @@
+monitor:
+  - feed:
+      name: 'Download new superHero show | WEB-DL HD only'
+      url: https://<sometorrentsite>.rss
+      interval: 14400
+      filters:
+        - include:
+            element: title
+            matches: 'Those\.Guys\.S02E[0-9]+\..*WEB-DL'
+        - include:
+            element: title
+            matches: '1080p|1440p|4k'
+      notifiers:
+        - gotify:
+            server: https://gotify.example.com
+            token: 'your_token'

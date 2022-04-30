@@ -1,9 +1,0 @@
-monitor:
-  - feed:
-      name: 'Upcoming space missions'
-      url: https://www.nasa.gov/rss/dyn/breaking_news.rss
-      interval: 30
-      filters:
-        - include:
-            element: description
-            matches: 'Mission'

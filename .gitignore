@@ -1,3 +1,6 @@
 .vscode
 .env
 *.so
+coverage.out
+feed-monitor
+*.log

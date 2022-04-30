@@ -2,8 +2,12 @@ monitor:
   - feed:
       name: 'Raspberry Pi Available'
       url: https://rpilocator.com/feed.rss
-      interval: 60
+      interval: 120
       filters:
         - include:
             element: title
             matches: '.*US'
+      notifiers:
+        - gotify:
+            server: https://gotify.example.com
+            token: 'your_token'

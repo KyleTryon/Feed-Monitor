@@ -1,16 +1,18 @@
 package main
 
 import (
+	"errors"
 	"flag"
 	"fmt"
-	"github.com/joho/godotenv"
-	"github.com/mmcdole/gofeed"
-	"gopkg.in/yaml.v3"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"plugin"
 	"regexp"
 	"time"
+	"github.com/joho/godotenv"
+	"github.com/mmcdole/gofeed"
+	"gopkg.in/yaml.v3"
 )
 
 type FeedFilter struct {
@@ -26,6 +28,7 @@ type Feed struct {
 		Include FeedFilter
 		Exclude FeedFilter
 	} `yaml:"filters"`
+	Notifiers []map[string]map[string]string `yaml:"notifiers,omitempty"`
 }
 
 type FeedActive struct {
@@ -44,9 +47,11 @@ type Notification struct {
 	Send func(*gofeed.Item)
 }
 
-var sendNotification plugin.Symbol
-var ActiveFeeds []FeedActive
-var fp = gofeed.NewParser()
+type Notifier struct {
+	Name string
+	Config string
+}
+
 
 func main() {
 	fileName := flag.String("config", "", "config.yml")
@@ -63,63 +68,119 @@ func main() {
 			fmt.Println("Error loading .env file")
 		}
 	}
-	parseConfig(*fileName)
-	plug, err := plugin.Open("./plugins/gotify/gotify.so")
+
+	activeFeeds, err := parseConfig(*fileName)
 	if err != nil {
-		fmt.Println("Error loading plugin: ", err)
+		fmt.Println("Error parsing config file: ", err)
 		os.Exit(1)
 	}
-	sendNotification, err = plug.Lookup("Send")
+
+	plugins, err := loadPlugins()
 	if err != nil {
-		fmt.Println("Error looking up Send function in plugin: ", err)
+		fmt.Println("Error loading plugins: ", err)
 		os.Exit(1)
 	}
-	runService()
+
+	runService(plugins, activeFeeds)
 }
 
-func runService() {
+// Loads all plugins in the plugins directory.
+// Set OS environment variable 'FEED_MONITOR_PLUGIN_DIR' to the directory containing the plugins, or default to "./plugins"
+func loadPlugins() (map[string]plugin.Symbol, error) {
+	fmt.Println("Loading plugins...")
+	var pluginList []string
+	pluginMap := make(map[string]plugin.Symbol)
+	pluginPath := os.Getenv("FEED_MONITOR_PLUGIN_DIR")
+	if pluginPath == "" {
+		pluginPath = "./plugins"
+	}
+	err := filepath.Walk(pluginPath, func(path string, info os.FileInfo, err error) error {
+		if filepath.Ext(path) == ".so" {
+			pluginList = append(pluginList, path)
+		}
+		return nil
+	})
+	if err != nil {
+		fmt.Println("Error loading plugins")
+		return nil, err
+	}
+	for _, pluginPath := range pluginList {
+		fmt.Println("Loading plugin: ", pluginPath)
+		plug, err := plugin.Open(pluginPath)
+		if err != nil {
+			fmt.Println("Error loading plugin: ", err)
+		}
+		sendNotification, err := plug.Lookup("Send")
+		if err != nil {
+			fmt.Println("Error looking up Send function in plugin")
+			return nil, err
+		}
+		pluginMap[pluginPath] = sendNotification
+	}
+	return pluginMap, nil
+}
+
+// The main service loop.
+// Checks the feed for new items, and sends notifications if there are any.
+func runService(plugins map[string]plugin.Symbol, activeFeeds []FeedActive) {
 	fmt.Println("Starting service")
+	ActiveFeeds := activeFeeds
 	for {
 		for i, feed := range ActiveFeeds {
 			if time.Now().Unix()-feed.lastPulled > int64(feed.Interval) {
 				fmt.Println("Last updated: ", time.Unix(feed.lastPulled, 0))
-				checkFeed(feed, i)
+				matches, err := checkFeed(feed.Feed, feed.lastItemTitle)
+				if err != nil {
+					fmt.Println("Error checking feed: ", err)
+					continue
+				}
+				if len(matches) > 0 {
+					ActiveFeeds[i].lastPulled = time.Now().Unix()
+					ActiveFeeds[i].lastItemTitle = matches[len(matches)-1].Title
+				}
+				for _, match := range matches {
+					sendFeedNotifications(feed.Feed, match, plugins)
+				}
 			}
 		}
 	}
 }
 
-func parseConfig(fileName string) {
+// Parses the YAML config file and returns a list of Feeds.
+func parseConfig(fileName string) ([]FeedActive, error) {
 	var config MonitorSchema
 	configFile, err := ioutil.ReadFile(fileName)
+	var activeFeeds []FeedActive
 	if err != nil {
 		fmt.Println("Error reading config file: ", err)
-		return
+		return nil, err
 	}
 	err = yaml.Unmarshal(configFile, &config)
 	if err != nil {
 		fmt.Println("Error parsing config file: ", err)
-		return
+		return nil, err
 	}
 	for _, feed := range config.Monitor {
-		ActiveFeeds = append(ActiveFeeds, FeedActive{feed.Feed, 0, ""})
+		activeFeeds = append(activeFeeds, FeedActive{feed.Feed, 0, ""})
 	}
+	return activeFeeds, nil
 }
 
-func checkFeed(feedItem FeedActive, FeedIndex int) {
-	// Fetches the feed and grabs only the new items, stored in newItems[].
-	feed, err := fp.ParseURL(feedItem.Url)
-	fmt.Println("Checking feed: ", feedItem.Name)
+// Checks a feed and returns any new items
+func checkFeed(feed Feed, lastItem string) ([]*gofeed.Item, error){
+	var fp = gofeed.NewParser()
+	parsedFeed, err := fp.ParseURL(feed.Url)
+	fmt.Println("Checking feed: ", feed.Name)
 	var newItems []*gofeed.Item
 	var matchedItems []*gofeed.Item
 	if err != nil {
-		fmt.Println("Error parsing feed: ", err)
-		return
+		fmt.Println("Error parsing feed")
+		return nil, err
 	}
-	fmt.Println("Feed length: ", len(feed.Items))
-	for _, item := range feed.Items {
+	fmt.Println("Feed length: ", len(parsedFeed.Items))
+	for _, item := range parsedFeed.Items {
 		fmt.Println("Checking item: ", item.Title)
-		if item.Title == ActiveFeeds[FeedIndex].lastItemTitle {
+		if item.Title == lastItem {
 			fmt.Println("Item already processed")
 			break
 		} else {
@@ -127,13 +188,10 @@ func checkFeed(feedItem FeedActive, FeedIndex int) {
 			newItems = append(newItems, item)
 		}
 	}
-	if len(newItems) != 0 {
-		ActiveFeeds[FeedIndex].lastItemTitle = newItems[0].Title
-	}
 	fmt.Println("New items: ", len(newItems))
 	for _, item := range newItems {
 		isMatchItem := true
-		for _, filter := range feedItem.Filters {
+		for _, filter := range feed.Filters {
 			if filter.Include.Element != "" {
 				if !checkFilter(item, filter.Include, true) {
 					isMatchItem = false
@@ -151,25 +209,46 @@ func checkFeed(feedItem FeedActive, FeedIndex int) {
 			matchedItems = append(matchedItems, item)
 		}
 	}
-	if len(matchedItems) != 0 {
-		fmt.Println("New items found: ", len(matchedItems))
-		for _, item := range matchedItems {
-			// Send Alert
-			response, err := sendNotification.(func(*gofeed.Item, string) (string, error))(item, feedItem.Name)
-			if err != nil {
-				fmt.Println("Error sending notification: ", err)
-			}
-			fmt.Println("gotify:", response)
-			fmt.Println("\n==============================")
-			fmt.Println("Title: ", item.Title)
-			fmt.Println("Description: ", item.Description)
-			fmt.Println("Link: ", item.Link)
-			fmt.Println("==============================")
-		}
-	}
-	ActiveFeeds[FeedIndex].lastPulled = time.Now().Unix()
+	return matchedItems, nil
 }
 
+// Send a notification for a feed item via all supplied "Notifiers"
+func sendFeedNotifications(feed Feed, item *gofeed.Item, plugins map[string]plugin.Symbol ) (string, error) {
+	if len(plugins) == 0 {
+		return "", errors.New("no plugins loaded")
+	}
+	if len(feed.Notifiers) == 0 {
+		return "", errors.New("no notifiers configured")
+	}
+	for _, y := range feed.Notifiers {
+		for k, v := range y {
+			selectedPlugin := getPlugin(k)
+			if plugins[selectedPlugin] != nil {
+				pluginConfig, err := yaml.Marshal(v)
+				if err != nil {
+					fmt.Println("Error marshalling plugin config: ", err)
+					return "", err
+				}
+				err = plugins[selectedPlugin].(func(*gofeed.Item, string, string) (error))(item, feed.Name, string(pluginConfig))
+				if err != nil {
+					return "", err
+				}
+			}
+		}
+	}
+	return "ok", nil
+}
+
+// Returns the plugin path from the name.
+func getPlugin(pluginName string) (string) {
+	pluginPath := os.Getenv("FEED_MONITOR_PLUGIN_DIR")
+	if pluginPath == "" {
+		pluginPath = "plugins"
+	}
+	return pluginPath + "/" + pluginName + "/" + pluginName + ".so"
+}
+
+// Checks an item against a filter and returns true if it matches.
 func checkFilter(item *gofeed.Item, filter FeedFilter, inclusive bool) bool {
 	var elementString string
 	re := regexp.MustCompile(filter.Matches)

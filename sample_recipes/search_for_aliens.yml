@@ -2,7 +2,7 @@ monitor:
   - feed:
       name: 'Aliens are real'
       url: https://www.nasa.gov/rss/dyn/breaking_news.rss
-      interval: 60
+      interval: 14400
       filters:
         - include:
             element: title
@@ -10,3 +10,7 @@ monitor:
         - exclude:
             element: published
             matches: 'Apr, 1'
+      notifiers:
+        - gotify:
+            server: https://gotify.example.com
+            token: 'your_token'
