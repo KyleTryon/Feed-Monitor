@@ -26,5 +26,5 @@ jobs:
       - name: Build Gotify Plugin
         run: bash ./bin/build_gotify.sh
       - name: Run Tests
-      - run: bash ./bin/run_tests.sh
+        run: bash ./bin/run_tests.sh
       - uses: codecov/codecov-action@v2
