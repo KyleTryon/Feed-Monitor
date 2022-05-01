@@ -1,12 +1,12 @@
 name: Test Feed-Monitor
 on: [push]
 jobs:
-  Explore-GitHub-Actions:
+  Run-Tests:
     runs-on: ubuntu-latest
     container: golang:1.18.1-buster
     services:
       gotify:
-        image: gotify/gotify
+        image: gotify/server:2.1.4
         ports:
           - "80:80"
     steps:
