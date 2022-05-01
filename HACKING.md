@@ -15,32 +15,14 @@ package main
 
 import (
  "github.com/mmcdole/gofeed"
- "gopkg.in/yaml.v3"
 )
 
-// Plugins can accept custom configuration YAML.
-type pluginConfig struct {
- Url string `yaml:"url"`
- Token string `yaml:"token"`
-}
-
-// Parse the configuration and return the config values.
-// You may need the user to provide values via config for the Send function
-func getParams(config string) (string, string, error) {
- var pluginConfig pluginConfig
- err := yaml.Unmarshal([]byte(config), &pluginConfig)
- if err != nil {
-  return "", "", err
- }
- return pluginConfig.Url, pluginConfig.Token, nil
-}
-
 // The Send function must expect a feed item, the feed name, and the plugin configuration.
-func Send(item *gofeed.Item, feedName string, config string) (string, error) {
-    url, token, err := getParams(config)
-    if err != nil {
-        return "", err
-    }
-  return fmt.Sprintf("%s: %s", item.Title, item.Link), nil
+func Send(item *gofeed.Item, feedName string, config map[string]string) (error) {
+  // Access config via the map, such as: config["server"]
+  // Get data from the item, such as: item.Title
+  return nil
 }
 ```
+
+A plugin must implement the `Send` function. The `Send` function is responsible for sending the alert to the external service. The `Send` function should return an error if the alert could not be sent.

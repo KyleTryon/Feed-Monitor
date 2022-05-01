@@ -188,7 +188,6 @@ func checkFeed(feed Feed, lastItem string) ([]*gofeed.Item, error){
 			newItems = append(newItems, item)
 		}
 	}
-	fmt.Println("New items: ", len(newItems))
 	for _, item := range newItems {
 		isMatchItem := true
 		for _, filter := range feed.Filters {
@@ -224,13 +223,9 @@ func sendFeedNotifications(feed Feed, item *gofeed.Item, plugins map[string]plug
 		for k, v := range y {
 			selectedPlugin := getPlugin(k)
 			if plugins[selectedPlugin] != nil {
-				pluginConfig, err := yaml.Marshal(v)
+				err := plugins[selectedPlugin].(func(*gofeed.Item, string, map[string]string) (error))(item, feed.Name, v)
 				if err != nil {
-					fmt.Println("Error marshalling plugin config: ", err)
-					return "", err
-				}
-				err = plugins[selectedPlugin].(func(*gofeed.Item, string, string) (error))(item, feed.Name, string(pluginConfig))
-				if err != nil {
+					fmt.Println("Error sending notification: ", err)
 					return "", err
 				}
 			}

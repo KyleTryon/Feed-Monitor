@@ -6,42 +6,25 @@ import (
 	"net/http"
 	"net/url"
 	"github.com/mmcdole/gofeed"
-	"gopkg.in/yaml.v3"
 )
 
-type gotifyConfig struct {
-	Url string `yaml:"url"`
-	Token string `yaml:"token"`
-}
-
-func getParams(config string) (string, string, error) {
-	var gotifyConfig gotifyConfig
-	err := yaml.Unmarshal([]byte(config), &gotifyConfig)
-	if err != nil {
-		return "", "", err
-	}
-	return gotifyConfig.Url, gotifyConfig.Token, nil
-}
 
 // A successful status will return "200 OK"
-func Send(item *gofeed.Item, feedName string, config string) (error) {
+func Send(item *gofeed.Item, feedName string, config map[string]string) (error) {
 	fmt.Println("Sending to Gotify")
 	notificationMessage := fmt.Sprintf("%s: %s", item.Title, item.Link)
 	notificationTitle := fmt.Sprintf("New item in %s", feedName)
-	gotifyUrl, gotifyToken, err := getParams(config)
-	if err != nil {
-		return err
-	}
-	if len(gotifyUrl) > 0 && len(gotifyToken) > 0 {
-		postURL := fmt.Sprintf("%s/message?token=%s", gotifyUrl, gotifyToken)
-		_, err := http.PostForm(postURL,
+	if len(config["url"]) > 0 && len(config["token"]) > 0 {
+		postURL := fmt.Sprintf("%s/message?token=%s", config["url"], config["token"])
+		response, err := http.PostForm(postURL,
 			url.Values{"message": {notificationMessage}, "title": {notificationTitle}})
 		if err != nil {
 			return err
 		}
+		fmt.Println("Gotify response: ", response.Status)
 		return err
 	} else {
-		return errors.New("environment variable(s) missing, ensure GOTIFY_URL and GOTIFY_TOKEN are set")
+		return errors.New("gotify: Token or URL is not set")
 	}
 }
 
