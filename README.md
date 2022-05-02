@@ -6,6 +6,14 @@
 
 _**Note:** This repo is not yet ready for use and is in very early stages of development._
 
+- [Feed-Monitor](#feed-monitor)
+  * [Basic Usage](#basic-usage)
+    + [Run in Docker](#run-in-docker)
+    + [Run in Docker-Compose](#run-in-docker-compose)
+  * [Plugins](#plugins)
+    + [Official Plugins](#official-plugins)
+    + [Community Plugins](#community-plugins)
+
 A configurable service written in Go to monitors RSS, Atom, and JSON feeds. Create a simple configuration file to define your feeds and associated filters, and begin receiving notifications when matches are found. Connect your notification to many services through plugins.
 
 ## Basic Usage
@@ -41,11 +49,28 @@ go run main.go -config=config.yml
 
 ### Run in Docker
 
-> Coming soon.
+> Not yet published
+
+```shell
+docker run \
+  --name-feed-monitor \
+  -v /host/path/to/config:/config `# path to config file` \
+  --restart unless-stopped \
+  techsquidtv/feed-monitor:latest
+```
 
 ### Run in Docker-Compose
 
-> Coming soon.
+> Not yet published
+
+```yaml
+services:
+  feed-monitor:
+    image: techsquidtv/feed-monitor:latest
+    restart: unless-stopped
+    volumes:
+      - /host/path/to/config:/config
+```
 
 ## Plugins
 
