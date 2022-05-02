@@ -3,7 +3,7 @@ on: [push]
 jobs:
   Run-Tests:
     runs-on: ubuntu-latest
-    container: golang:1.18.1-buster
+    container: golang:1.17-buster
     services:
       gotify:
         image: gotify/server:2.1.4

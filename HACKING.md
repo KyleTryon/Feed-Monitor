@@ -8,7 +8,7 @@ Feed Monitor is configured to send notification alerts to external plugins that 
 
 ### Plugin Template
 
-To create your own plugin, create a new Go  module with the following structure:
+To create your own plugin, create a new Go module with the following structure:
 
 ```go
 package main

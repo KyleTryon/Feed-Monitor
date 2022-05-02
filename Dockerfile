@@ -18,4 +18,4 @@ COPY plugins/gotify/ plugins/gotify/
 RUN cd plugins/gotify/
 RUN go build -buildmode=plugin
 
-CMD [ "/feed-monitor" ]
+CMD [ "/feed-monitor -config=/config/config.yml " ]

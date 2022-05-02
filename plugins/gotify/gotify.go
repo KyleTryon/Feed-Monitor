@@ -8,10 +8,7 @@ import (
 	"github.com/mmcdole/gofeed"
 )
 
-
-// A successful status will return "200 OK"
 func Send(item *gofeed.Item, feedName string, config map[string]string) (error) {
-	fmt.Println("Sending to Gotify")
 	notificationMessage := fmt.Sprintf("%s: %s", item.Title, item.Link)
 	notificationTitle := fmt.Sprintf("New item in %s", feedName)
 	if len(config["url"]) > 0 && len(config["token"]) > 0 {
@@ -27,4 +24,3 @@ func Send(item *gofeed.Item, feedName string, config map[string]string) (error) 
 		return errors.New("gotify: Token or URL is not set")
 	}
 }
-

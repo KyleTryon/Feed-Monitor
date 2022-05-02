@@ -1,21 +1,28 @@
 package main
 
 import (
-	"testing"
+	"fmt"
+	"github.com/joho/godotenv"
 	"github.com/mmcdole/gofeed"
 	"os"
-	"github.com/joho/godotenv"
+	"testing"
 )
 
 var exampleFeed = Feed{
-	Name: "Example",
-	Url: "https://example.com/feed.xml",
+	Name:     "Example",
+	Url:      "https://example.com/feed.xml",
 	Interval: 60,
-	Filters: make([]struct{Include FeedFilter; Exclude FeedFilter}, 0),
+	Filters: make([]struct {
+		Include FeedFilter
+		Exclude FeedFilter
+	}, 0),
 	Notifiers: make([]map[string]map[string]string, 0),
-	}
+}
 
-var exampleFilter = struct{Include FeedFilter; Exclude FeedFilter}{
+var exampleFilter = struct {
+	Include FeedFilter
+	Exclude FeedFilter
+}{
 	Include: FeedFilter{
 		Element: "item",
 		Matches: ".*",
@@ -23,15 +30,15 @@ var exampleFilter = struct{Include FeedFilter; Exclude FeedFilter}{
 }
 
 var exampleMatchItem = &gofeed.Item{
-	Title: "Example Title",
+	Title:       "Example Title",
 	Description: "Example Description",
-	Link: "https://example.com/",
-	Links: []string {
+	Link:        "https://example.com/",
+	Links: []string{
 		"https://example.com/",
 	},
 	Content: "Example Content",
 	Updated: "Example Updated",
-	}
+}
 
 func setupTests() {
 	godotenv.Load(".env")
@@ -47,21 +54,24 @@ func TestLoadPlugins(t *testing.T) {
 	}
 }
 
-
 func TestSendFeedNotifications(t *testing.T) {
 
 	setupTests()
 
 	var exampleNotifier = map[string]map[string]string{
 		"gotify": {
-			"url": os.Getenv("GOTIFY_URL"),
+			"url":   os.Getenv("GOTIFY_URL"),
 			"token": os.Getenv("GOTIFY_TOKEN"),
 		},
 	}
 	exampleFeed.Filters = append(exampleFeed.Filters, exampleFilter)
 	exampleFeed.Notifiers = append(exampleFeed.Notifiers, exampleNotifier)
 
-	plugins, _ := loadPlugins()
+	fmt.Println("TEST: Loading plugins")
+	plugins, err := loadPlugins()
+	if err != nil {
+		t.Error("Error loading plugins: ", err)
+	}
 
 	status, err := sendFeedNotifications(exampleFeed, exampleMatchItem, plugins)
 	if err != nil {
