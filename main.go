@@ -4,15 +4,15 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"github.com/joho/godotenv"
+	"github.com/mmcdole/gofeed"
+	"gopkg.in/yaml.v3"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"plugin"
 	"regexp"
 	"time"
-	"github.com/joho/godotenv"
-	"github.com/mmcdole/gofeed"
-	"gopkg.in/yaml.v3"
 )
 
 type FeedFilter struct {
@@ -48,10 +48,9 @@ type Notification struct {
 }
 
 type Notifier struct {
-	Name string
+	Name   string
 	Config string
 }
-
 
 func main() {
 	fileName := flag.String("config", "", "config.yml")
@@ -101,9 +100,11 @@ func loadPlugins() (map[string]plugin.Symbol, error) {
 		return nil
 	})
 	if err != nil {
-		fmt.Println("Error loading plugins")
+		fmt.Println("Unable to access the plugin directory: ", err)
 		return nil, err
 	}
+	pluginLen := len(pluginList)
+	fmt.Println("Found ", pluginLen, " plugins")
 	for _, pluginPath := range pluginList {
 		fmt.Println("Loading plugin: ", pluginPath)
 		plug, err := plugin.Open(pluginPath)
@@ -167,7 +168,7 @@ func parseConfig(fileName string) ([]FeedActive, error) {
 }
 
 // Checks a feed and returns any new items
-func checkFeed(feed Feed, lastItem string) ([]*gofeed.Item, error){
+func checkFeed(feed Feed, lastItem string) ([]*gofeed.Item, error) {
 	var fp = gofeed.NewParser()
 	parsedFeed, err := fp.ParseURL(feed.Url)
 	fmt.Println("Checking feed: ", feed.Name)
@@ -212,7 +213,7 @@ func checkFeed(feed Feed, lastItem string) ([]*gofeed.Item, error){
 }
 
 // Send a notification for a feed item via all supplied "Notifiers"
-func sendFeedNotifications(feed Feed, item *gofeed.Item, plugins map[string]plugin.Symbol ) (string, error) {
+func sendFeedNotifications(feed Feed, item *gofeed.Item, plugins map[string]plugin.Symbol) (string, error) {
 	if len(plugins) == 0 {
 		return "", errors.New("no plugins loaded")
 	}
@@ -223,7 +224,7 @@ func sendFeedNotifications(feed Feed, item *gofeed.Item, plugins map[string]plug
 		for k, v := range y {
 			selectedPlugin := getPlugin(k)
 			if plugins[selectedPlugin] != nil {
-				err := plugins[selectedPlugin].(func(*gofeed.Item, string, map[string]string) (error))(item, feed.Name, v)
+				err := plugins[selectedPlugin].(func(*gofeed.Item, string, map[string]string) error)(item, feed.Name, v)
 				if err != nil {
 					fmt.Println("Error sending notification: ", err)
 					return "", err
@@ -235,7 +236,7 @@ func sendFeedNotifications(feed Feed, item *gofeed.Item, plugins map[string]plug
 }
 
 // Returns the plugin path from the name.
-func getPlugin(pluginName string) (string) {
+func getPlugin(pluginName string) string {
 	pluginPath := os.Getenv("FEED_MONITOR_PLUGIN_DIR")
 	if pluginPath == "" {
 		pluginPath = "plugins"

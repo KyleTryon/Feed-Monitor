@@ -1,1 +1,2 @@
-go test -race -covermode=atomic -coverprofile=coverage.out
+go build
+go test -v -race -covermode=atomic -coverprofile=coverage.out
