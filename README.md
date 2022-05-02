@@ -7,12 +7,12 @@
 _**Note:** This repo is not yet ready for use and is in very early stages of development._
 
 - [Feed-Monitor](#feed-monitor)
-  * [Basic Usage](#basic-usage)
-    + [Run in Docker](#run-in-docker)
-    + [Run in Docker-Compose](#run-in-docker-compose)
-  * [Plugins](#plugins)
-    + [Official Plugins](#official-plugins)
-    + [Community Plugins](#community-plugins)
+  - [Basic Usage](#basic-usage)
+    - [Run in Docker](#run-in-docker)
+    - [Run in Docker-Compose](#run-in-docker-compose)
+  - [Plugins](#plugins)
+    - [Official Plugins](#official-plugins)
+    - [Community Plugins](#community-plugins)
 
 A configurable service written in Go to monitors RSS, Atom, and JSON feeds. Create a simple configuration file to define your feeds and associated filters, and begin receiving notifications when matches are found. Connect your notification to many services through plugins.
 
