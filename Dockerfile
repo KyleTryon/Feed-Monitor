@@ -11,11 +11,10 @@ RUN go mod download
 
 # Build the main binary
 COPY *.go ./
-RUN go build -o /feed-monitor
+RUN go build -o feed-monitor
 
 # Build and copy the  default plugins
 COPY plugins/gotify/ plugins/gotify/
-RUN cd plugins/gotify/
-RUN go build -buildmode=plugin
+RUN cd plugins/gotify/; go build -buildmode=plugin
 
-CMD [ "/feed-monitor -config=/config/config.yml " ]
+CMD [ "./feed-monitor", "-config=/config/config.yml" ]
