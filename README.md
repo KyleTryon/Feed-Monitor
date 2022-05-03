@@ -49,24 +49,24 @@ go run main.go -config=config.yml
 
 ### Run in Docker
 
-> Not yet published
+> ⚠️ Currently must use tag `alpha`
 
 ```shell
 docker run \
   --name-feed-monitor \
   -v /host/path/to/config:/config `# path to config file` \
   --restart unless-stopped \
-  techsquidtv/feed-monitor:latest
+  techsquidtv/feed-monitor:alpha
 ```
 
 ### Run in Docker-Compose
 
-> Not yet published
+> ⚠️ Currently must use tag `alpha`
 
 ```yaml
 services:
   feed-monitor:
-    image: techsquidtv/feed-monitor:latest
+    image: techsquidtv/feed-monitor:alpha
     restart: unless-stopped
     volumes:
       - /host/path/to/config:/config
