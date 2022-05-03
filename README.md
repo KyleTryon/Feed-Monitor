@@ -4,7 +4,7 @@
   <img src=".github/img/feed-monitor-logo-color.svg" width="100" height="100">
 </p>
 
-_**Note:** This repo is not yet ready for use and is in very early stages of development._
+_**Note:** This repo is not yet ready for production-use and is in early stages of development. Current status: Alpha_
 
 - [Feed-Monitor](#feed-monitor)
   - [Basic Usage](#basic-usage)
